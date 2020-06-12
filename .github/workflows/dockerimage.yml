@@ -1,0 +1,78 @@
+name: Docker Image CI
+
+on:
+  pull_request:
+    branches: 'master'
+    paths:
+      - "**"
+      - "!**.MD"
+      - "!LICENSE"
+      - "!.gitignore"
+  push:
+    branches: 'master'
+    tags: 'v*'
+    paths:
+      - "**"
+      - "!**.MD"
+      - "!LICENSE"
+      - "!.gitignore"
+
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v1
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          version: latest
+      -
+        name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+      -
+        name: Prepare
+        id: prepare
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo ::set-output name=version::${GITHUB_REF#refs/tags/v}
+          else
+            echo ::set-output name=version::snapshot
+          fi
+          echo ::set-output name=docker_platforms::linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/386
+          echo ::set-output name=docker_image::${{ secrets.DOCKER_HUB_USER }}/http-proxy-server
+      -
+        name: Docker Buildx (no push)
+        run: |
+          docker buildx build --platform ${{ steps.prepare.outputs.docker_platforms }} \
+            --output "type=image,push=false" \
+            --tag "${{ steps.prepare.outputs.docker_image }}:latest" \
+            --tag "${{ steps.prepare.outputs.docker_image }}:${{ steps.prepare.outputs.version }}" \
+            --file Dockerfile .
+      -
+        name: Docker Hub Login
+        if: success() && !startsWith(github.event_name, 'pull_request')
+        run: |
+          docker login --username "${{ secrets.DOCKER_HUB_USER }}" -p ${{ secrets.DOCKER_HUB_PASS }}
+      -
+        name: Docker Buildx (push)
+        if: success() && !startsWith(github.event_name, 'pull_request')
+        run: |
+          docker buildx build --platform ${{ steps.prepare.outputs.docker_platforms }} \
+            --output "type=image,push=true" \
+            --tag "${{ steps.prepare.outputs.docker_image }}:${{ steps.prepare.outputs.version }}" \
+            --tag "${{ steps.prepare.outputs.docker_image }}:latest" \
+            --file Dockerfile .
+      -
+        name: Docker Check Manifest
+        if: always() && !startsWith(github.event_name, 'pull_request')
+        run: |
+          docker run --rm mplatform/mquery ${{ steps.prepare.outputs.docker_image }}:${{ steps.prepare.outputs.version }}
+      -
+        name: Clear
+        if: always() && !startsWith(github.event_name, 'pull_request')
+        run: |
+          rm -f ${HOME}/.docker/config.json
