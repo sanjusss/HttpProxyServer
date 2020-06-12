@@ -16,6 +16,10 @@ RUN dotnet publish "HttpProxyServer.csproj" -c Release -o /app/publish
 
 FROM base AS final
 MAINTAINER sanjusss@qq.com
+ENV USER=""
+ENV PASSWORD=""
+ENV ENDPOINTS="0.0.0.0:8000"
+EXPOSE 8000
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "HttpProxyServer.dll"]

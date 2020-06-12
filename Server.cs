@@ -21,7 +21,7 @@ namespace HttpProxyServer
                     var proxySever = new ProxyServer(false);
                     foreach (var ep in op.GetIPEndPoints())
                     {
-                        proxySever.AddEndPoint(new TransparentProxyEndPoint(ep.Address, ep.Port, false));
+                        proxySever.AddEndPoint(new ExplicitProxyEndPoint(ep.Address, ep.Port, false));
                         this.Print($"成功监听{ ep }。");
                     }
 
