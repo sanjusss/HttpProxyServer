@@ -42,7 +42,7 @@ jobs:
           else
             echo ::set-output name=version::snapshot
           fi
-          echo ::set-output name=docker_platforms::linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/386
+          echo ::set-output name=docker_platforms::linux/amd64,linux/arm/v7,linux/arm64
           echo ::set-output name=docker_image::${{ secrets.DOCKER_HUB_USER }}/http-proxy-server
       -
         name: Docker Buildx (no push)
@@ -68,7 +68,7 @@ jobs:
             --file Dockerfile .
       -
         name: Docker Check Manifest
-        if: always() && !startsWith(github.event_name, 'pull_request')
+        if: success() && !startsWith(github.event_name, 'pull_request')
         run: |
           docker run --rm mplatform/mquery ${{ steps.prepare.outputs.docker_image }}:${{ steps.prepare.outputs.version }}
       -
